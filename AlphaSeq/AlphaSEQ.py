@@ -1,6 +1,6 @@
-from MCTS import MCTS_main
-from ConvNets import DeepNN
-from StateCNT import Dotdict, HarshState
+from AlphaSeq.MCTS import MCTS_main
+from AlphaSeq.ConvNets import DeepNN
+from AlphaSeq.StateCNT import Dotdict, HarshState
 import numpy as np
 import pickle
 from collections import deque
@@ -37,11 +37,11 @@ memorySize = n_steps * args.updateNNcycle * args.zDNN
 
 ######## Complementary Code J = 2, M = 2, N = 8
 # if np.mod(args.N, 2) == 1:
-	# worstMetric = 499
-	# bestMetric = 0
+    # worstMetric = 499
+    # bestMetric = 0
 # else:
-	# worstMetric = 496
-	# bestMetric = 0
+    # worstMetric = 496
+    # bestMetric = 0
 
 ######## pulse compression radar
 # worstMetric = 37
@@ -51,7 +51,7 @@ worstMetric = 0
 bestMetric = 15
 
 ######## reward definition - complementary code
-# def calc_reward(currentState):
+def calc_reward(currentState):
     # Code set
     NN = args.N
 
@@ -91,51 +91,51 @@ bestMetric = 15
         reward = -1
     return reward, corrSum
 
-######## reward definition - pulse compression radar
-def calc_reward(seq):
-    # detect error
-    if 0 in seq:
-        print("Reward Error - inputs contain 0")
-        pdb.set_trace()
-    seq = seq[0][:-1]
-    lenSeq = len(seq)
-
-    matrixC = np.zeros([lenSeq,2*lenSeq-2])
-
-    shift = 1 - lenSeq
-    xx = 0
-    while shift <= lenSeq - 1:
-        if shift != 0:
-            vecS = f_shiftadd0(seq, shift)
-            matrixC[:,xx] = vecS
-            xx += 1
-        shift += 1
-    matrixR = np.dot(matrixC, matrixC.T)
-
-    try:
-        temp1 = np.dot(seq,np.linalg.inv(matrixR))
-    except:
-        print("Error when calculating inverse")
-        print("======================================================")
-        print("======================================================")
-        print("======================================================")
-        return -1, 0
-
-    MF = np.dot(temp1,seq.T)
-
-    # reward
-    if MF >= worstMetric:
-        reward = (2 * MF - bestMetric - worstMetric) / (bestMetric - worstMetric) # -1 to 1
-    else:
-        reward = -1
-
-    return reward, MF
-
-def f_shiftadd0(seq, shift):
-    if shift > 0:
-        return np.concatenate((np.zeros([shift]),seq[:-shift]),axis=0)
-    else:
-        return np.concatenate((seq[-shift:],np.zeros([-shift])),axis=0)
+# ######## reward definition - pulse compression radar
+# def calc_reward(seq):
+#     # detect error
+#     if 0 in seq:
+#         print("Reward Error - inputs contain 0")
+#         pdb.set_trace()
+#     seq = seq[0][:-1]
+#     lenSeq = len(seq)
+#
+#     matrixC = np.zeros([lenSeq,2*lenSeq-2])
+#
+#     shift = 1 - lenSeq
+#     xx = 0
+#     while shift <= lenSeq - 1:
+#         if shift != 0:
+#             vecS = f_shiftadd0(seq, shift)
+#             matrixC[:,xx] = vecS
+#             xx += 1
+#         shift += 1
+#     matrixR = np.dot(matrixC, matrixC.T)
+#
+#     try:
+#         temp1 = np.dot(seq,np.linalg.inv(matrixR))
+#     except:
+#         print("Error when calculating inverse")
+#         print("======================================================")
+#         print("======================================================")
+#         print("======================================================")
+#         return -1, 0
+#
+#     MF = np.dot(temp1,seq.T)
+#
+#     # reward
+#     if MF >= worstMetric:
+#         reward = (2 * MF - bestMetric - worstMetric) / (bestMetric - worstMetric) # -1 to 1
+#     else:
+#         reward = -1
+#
+#     return reward, MF
+#
+# def f_shiftadd0(seq, shift):
+#     if shift > 0:
+#         return np.concatenate((np.zeros([shift]),seq[:-shift]),axis=0)
+#     else:
+#         return np.concatenate((seq[-shift:],np.zeros([-shift])),axis=0)
 
 ######## DNN player
 def DNN_play(n_games, evaluating_fn):
@@ -176,7 +176,7 @@ def evaluate_DNN(n_games, tau, evaluating_fn):
 
 ######## Update DNN
 def updateDNN(memoryBuffer, lr):
-	######## without replacement
+    ######## without replacement
     # np.random.shuffle(memoryBuffer)
     # numBatch = int(len(memoryBuffer)/args.batchSize)
     # for ii in range(numBatch):
@@ -184,7 +184,7 @@ def updateDNN(memoryBuffer, lr):
     #     for jj in range(args.batchSize):
     #         mini_batch.append(memoryBuffer[ii*args.batchSize+jj])
     #     DNN.update_DNN(mini_batch, lr)
-	######## with replacement
+    ######## with replacement
     # train DNN
     np.random.shuffle(memoryBuffer)
     numBatch = int(len(memoryBuffer)/args.batchSize) * 6
@@ -205,14 +205,14 @@ def main():
     meanCorr = evaluate_DNN(n_games = args.eval_games, tau = 0, evaluating_fn = DNN.evaluate_node)
     
     if args.recordState == 1:
-    	f = open('Record.txt', 'w')
-    	f.write(str(0)+" "+str(DNNplayer)+" "+str(meanCorr)+" "+str(DNNmin)+" "+str(0) + " " + str(0) + " ")
+        f = open('Record.txt', 'w')
+        f.write(str(0)+" "+str(DNNplayer)+" "+str(meanCorr)+" "+str(DNNmin)+" "+str(0) + " " + str(0) + " ")
         f.write(str(0)+" ") # overall visited states
         f.write(str(0)+" ") # visited states in the last G episodes
         f.write(str(0)+" ") # mean entropy in the last G episodes
         f.write(str(0)+" ") # cross entropy in the last G episodes
         f.write(str(0)+";\n") # number of states being evaluated in the latest G episodes
-    	f.close()
+        f.close()
 
     global worstMetric
     worstMetric = meanCorr
@@ -265,9 +265,9 @@ def main():
             print("Updated mean corr = ", updatedCorr)
 
             # ================================================================ store
-			if args.recordState == 1:
-            	f = open('Record.txt', 'a')
-            	f.write(str(episode)+" "+str(DNNplayer)+" "+str(updatedCorr)+" "+str(DNNmin)+" "+str(MCTSmin)+ " " + str(0)+ " ")
+            if args.recordState == 1:
+                f = open('Record.txt', 'a')
+                f.write(str(episode)+" "+str(DNNplayer)+" "+str(updatedCorr)+" "+str(DNNmin)+" "+str(MCTSmin)+ " " + str(0)+ " ")
                 f.write(str(VisitedState.printCnt())+" ") # overall visited states
                 f.write(str(VisitedState.printCnt1())+" ") # visited states in the last G episodes
                 VisitedState.renew()
@@ -276,17 +276,17 @@ def main():
                 f.write(str(crossentropy)+" ") # cross entropy in the last G episodes
                 f.write(str(numStates)+";\n") # number of states being evaluated in the latest G episodes
                 DNN.refresh_entropy()
-            	f.close()
+                f.close()
 
             if args.recordState == 1:
-	            filename = "./bestParams" + str(episode) + "/net_params.ckpt"
-	            DNN.saveParams(filename)
+                filename = "./bestParams" + str(episode) + "/net_params.ckpt"
+                DNN.saveParams(filename)
 
-	            filename1 = "States" + str(episode) + ".txt"
+                filename1 = "States" + str(episode) + ".txt"
 
-	            f = open(filename1, 'w')
-	            f.write(str(VisitedState.visitedState))
-	            f.close()
+                f = open(filename1, 'w')
+                f.write(str(VisitedState.visitedState))
+                f.close()
 
 
 
