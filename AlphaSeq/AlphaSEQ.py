@@ -11,16 +11,16 @@ import pdb
 
 ##====## sequence parameters
 args = Dotdict({
-        'N': 12, # length of input image to DNN, i.e., N_prime in the paper
-        'K': 5, # width of input image to DNN, i.e., K_prime in the paper
-        'lpos': 5, # number of positions filled in each time step
-        'M': 3, # feature planes
-        'Q': 2, # 2 for binary sequence
-        'alpha': 0.05, # exploration noise, i.e., \alpha in the paper
-        'simBudget': 900, # MCTS simulation budget
+        'N': 12,  # length of input image to DNN, i.e., N_prime in the paper
+        'K': 5,  # width of input image to DNN, i.e., K_prime in the paper
+        'lpos': 5,  # number of positions filled in each time step
+        'M': 3,  # feature planes
+        'Q': 2,  # 2 for binary sequence
+        'alpha': 0.05,  # exploration noise, i.e., \alpha in the paper
+        'simBudget': 900,  # MCTS simulation budget
         'eval_games': 50,
-        'updateNNcycle': 300, # parameter G
-        'zDNN': 2, # parameter z
+        'updateNNcycle': 300,  # parameter G
+        'zDNN': 2,  # parameter z
         'numfilters1': 256,
         'numfilters2': 512,
         'l2_const': 1e-3,
@@ -47,49 +47,60 @@ memorySize = n_steps * args.updateNNcycle * args.zDNN
 # worstMetric = 37
 # bestMetric = 0
 # with segmented induction [0,15], [5,25], [10,37]
-worstMetric = 0
-bestMetric = 15
+# worstMetric = 0
+# bestMetric = 15
 
-######## reward definition - complementary code
+
+###### binary codebook
+worstMetric = args.K
+bestMetric = 0
+
+
+###### reward definition - codebook
 def calc_reward(currentState):
-    # Code set
-    NN = args.N
 
-    aFig = currentState.reshape([NN, 4])
-    codeA1 = aFig[:,0]
-    codeA2 = aFig[:,1]
-    codeB1 = aFig[:,2]
-    codeB2 = aFig[:,3]
+    return 0, 0
 
-    # cyclic auto-corr
-    res1 = np.correlate(np.tile(codeA1, 2), codeA1, 'full')
-    res2 = np.correlate(np.tile(codeA2, 2), codeA2, 'full')
-    zeroVec1 = np.sum(np.abs(res1[NN:NN*2-1] + res2[NN:NN*2-1]))
-    res1 = np.correlate(np.tile(codeB1, 2), codeB1, 'full')
-    res2 = np.correlate(np.tile(codeB2, 2), codeB2, 'full')
-    zeroVec2 = np.sum(np.abs(res1[NN:NN*2-1] + res2[NN:NN*2-1]))
-    # cyclic cross-corr
-    res1 = np.correlate(np.tile(codeA1, 2), codeB1, 'full')
-    res2 = np.correlate(np.tile(codeA2, 2), codeB2, 'full')
-    zeroVec5 = np.sum(np.abs(res1[NN:NN*2] + res2[NN:NN*2]))
-    corrSum = np.sum([zeroVec1, zeroVec2, zeroVec5])
-    
-    for tau in range(1,NN):
-        # flipped auto corr
-        temp = np.dot(codeA1[range(NN-tau)], codeA1[range(tau,NN)]) - np.dot(codeA1[range(NN-tau,NN)], codeA1[range(tau)]) + np.dot(codeA2[range(NN-tau)], codeA2[range(tau,NN)]) - np.dot(codeA2[range(NN-tau,NN)], codeA2[range(tau)])
-        corrSum += np.abs(temp)
-        temp = np.dot(codeB1[range(NN-tau)], codeB1[range(tau,NN)]) - np.dot(codeB1[range(NN-tau,NN)], codeB1[range(tau)]) + np.dot(codeB2[range(NN-tau)], codeB2[range(tau,NN)]) - np.dot(codeB2[range(NN-tau,NN)], codeB2[range(tau)])
-        corrSum += np.abs(temp)
-        # flipped cross corr
-        temp = np.dot(codeA1[range(NN-tau)], codeB1[range(tau,NN)]) - np.dot(codeA1[range(NN-tau,NN)], codeB1[range(tau)]) + np.dot(codeA2[range(NN-tau)], codeB2[range(tau,NN)]) - np.dot(codeA2[range(NN-tau,NN)], codeB2[range(tau)])
-        corrSum += np.abs(temp)
-
-    # given corrSum -> reward
-    if corrSum <= worstMetric:
-        reward = (worstMetric + bestMetric - 2 * corrSum) / (worstMetric - bestMetric) # -1 to 1
-    else:
-        reward = -1
-    return reward, corrSum
+# ######## reward definition - complementary code
+# def calc_reward(currentState):
+#     # Code set
+#     NN = args.N
+#
+#     aFig = currentState.reshape([NN, 4])
+#     codeA1 = aFig[:, 0]
+#     codeA2 = aFig[:, 1]
+#     codeB1 = aFig[:, 2]
+#     codeB2 = aFig[:, 3]
+#
+#     # cyclic auto-corr
+#     res1 = np.correlate(np.tile(codeA1, 2), codeA1, 'full')
+#     res2 = np.correlate(np.tile(codeA2, 2), codeA2, 'full')
+#     zeroVec1 = np.sum(np.abs(res1[NN:NN*2-1] + res2[NN:NN*2-1]))
+#     res1 = np.correlate(np.tile(codeB1, 2), codeB1, 'full')
+#     res2 = np.correlate(np.tile(codeB2, 2), codeB2, 'full')
+#     zeroVec2 = np.sum(np.abs(res1[NN:NN*2-1] + res2[NN:NN*2-1]))
+#     # cyclic cross-corr
+#     res1 = np.correlate(np.tile(codeA1, 2), codeB1, 'full')
+#     res2 = np.correlate(np.tile(codeA2, 2), codeB2, 'full')
+#     zeroVec5 = np.sum(np.abs(res1[NN:NN*2] + res2[NN:NN*2]))
+#     corrSum = np.sum([zeroVec1, zeroVec2, zeroVec5])
+#
+#     for tau in range(1, NN):
+#         # flipped auto corr
+#         temp = np.dot(codeA1[range(NN-tau)], codeA1[range(tau,NN)]) - np.dot(codeA1[range(NN-tau,NN)], codeA1[range(tau)]) + np.dot(codeA2[range(NN-tau)], codeA2[range(tau,NN)]) - np.dot(codeA2[range(NN-tau,NN)], codeA2[range(tau)])
+#         corrSum += np.abs(temp)
+#         temp = np.dot(codeB1[range(NN-tau)], codeB1[range(tau,NN)]) - np.dot(codeB1[range(NN-tau,NN)], codeB1[range(tau)]) + np.dot(codeB2[range(NN-tau)], codeB2[range(tau,NN)]) - np.dot(codeB2[range(NN-tau,NN)], codeB2[range(tau)])
+#         corrSum += np.abs(temp)
+#         # flipped cross corr
+#         temp = np.dot(codeA1[range(NN-tau)], codeB1[range(tau,NN)]) - np.dot(codeA1[range(NN-tau,NN)], codeB1[range(tau)]) + np.dot(codeA2[range(NN-tau)], codeB2[range(tau,NN)]) - np.dot(codeA2[range(NN-tau,NN)], codeB2[range(tau)])
+#         corrSum += np.abs(temp)
+#
+#     # given corrSum -> reward
+#     if corrSum <= worstMetric:
+#         reward = (worstMetric + bestMetric - 2 * corrSum) / (worstMetric - bestMetric) # -1 to 1
+#     else:
+#         reward = -1
+#     return reward, corrSum
 
 # ######## reward definition - pulse compression radar
 # def calc_reward(seq):
@@ -194,15 +205,15 @@ def updateDNN(memoryBuffer, lr):
 
 def main():
     # initialize memory buffer
-    memoryBuffer = deque(maxlen = memorySize)
+    memoryBuffer = deque(maxlen=memorySize)
 
     # load/save latest structure
-    DNN.loadParams('./bestParams/net_params.ckpt')
+    # DNN.loadParams('./bestParams/net_params.ckpt')
     # DNN.saveParams('./bestParams/net_params.ckpt')
 
     # performance of current DNN
-    DNNplayer, DNNmin = DNN_play(n_games = 100, evaluating_fn = DNN.evaluate_node)
-    meanCorr = evaluate_DNN(n_games = args.eval_games, tau = 0, evaluating_fn = DNN.evaluate_node)
+    DNNplayer, DNNmin = DNN_play(n_games=100, evaluating_fn=DNN.evaluate_node)
+    meanCorr = evaluate_DNN(n_games=args.eval_games, tau=0, evaluating_fn=DNN.evaluate_node)
     
     if args.recordState == 1:
         f = open('Record.txt', 'w')
@@ -255,26 +266,26 @@ def main():
             # train new params
             updateDNN(memoryBuffer, lr)
             print("Deep Neural Network Updated, now evaluate the new DNN ...")
-            print("learning rate = ",lr)
+            print("learning rate = ", lr)
 
             # measure the performance of updated DNN
             print("---------------------------------------------------")
 
-            DNNplayer, DNNmin = DNN_play(n_games = 100, evaluating_fn = DNN.evaluate_node)
-            updatedCorr, MCTSmin = evaluate_DNN(n_games = args.eval_games, tau = 0, evaluating_fn = DNN.evaluate_node)
+            DNNplayer, DNNmin = DNN_play(n_games=100, evaluating_fn=DNN.evaluate_node)
+            updatedCorr, MCTSmin = evaluate_DNN(n_games=args.eval_games, tau=0, evaluating_fn=DNN.evaluate_node)
             print("Updated mean corr = ", updatedCorr)
 
             # ================================================================ store
             if args.recordState == 1:
                 f = open('Record.txt', 'a')
-                f.write(str(episode)+" "+str(DNNplayer)+" "+str(updatedCorr)+" "+str(DNNmin)+" "+str(MCTSmin)+ " " + str(0)+ " ")
-                f.write(str(VisitedState.printCnt())+" ") # overall visited states
-                f.write(str(VisitedState.printCnt1())+" ") # visited states in the last G episodes
+                f.write(str(episode)+" "+str(DNNplayer)+" "+str(updatedCorr)+" "+str(DNNmin)+" "+str(MCTSmin)+" "+str(0)+" ")
+                f.write(str(VisitedState.printCnt())+" ")  # overall visited states
+                f.write(str(VisitedState.printCnt1())+" ")  # visited states in the last G episodes
                 VisitedState.renew()
                 entropy, crossentropy, numStates = DNN.output_entropy()
-                f.write(str(entropy)+" ") # mean entropy in the last G episodes
-                f.write(str(crossentropy)+" ") # cross entropy in the last G episodes
-                f.write(str(numStates)+";\n") # number of states being evaluated in the latest G episodes
+                f.write(str(entropy)+" ")  # mean entropy in the last G episodes
+                f.write(str(crossentropy)+" ")  # cross entropy in the last G episodes
+                f.write(str(numStates)+";\n")  # number of states being evaluated in the latest G episodes
                 DNN.refresh_entropy()
                 f.close()
 
@@ -287,8 +298,6 @@ def main():
                 f = open(filename1, 'w')
                 f.write(str(VisitedState.visitedState))
                 f.close()
-
-
 
         episode += 1
         print(time.time()-epi_time_start)

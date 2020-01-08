@@ -51,7 +51,7 @@ class DeepNN():
         # Neural Net
         with self.graph.as_default():
             # input placeholders
-            self.batchInput = tf.placeholder(tf.float32, shape = [None, self.M, self.N, self.K])
+            self.batchInput = tf.placeholder(tf.float32, shape=[None, self.M, self.N, self.K])
             self.dropRate = tf.placeholder(tf.float32)
             self.isTraining = tf.placeholder(tf.bool, name="is_training")
 
@@ -185,7 +185,7 @@ class DeepNN():
         feature3 = np.zeros(state_batch.shape)
         feature3[state_batch == 0] = 1
 
-        state = np.reshape(np.hstack((feature1,feature2,feature3)),(len(feature1),self.M, self.N, self.K))
+        state = np.reshape(np.hstack((feature1, feature2, feature3)), (len(feature1), self.M, self.N, self.K))
         return state
 
     def plot_cost(self):
