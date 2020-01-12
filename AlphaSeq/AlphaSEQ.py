@@ -8,11 +8,14 @@ import time
 import random
 import multiprocessing
 import pdb
+import math
 
 ##====## sequence parameters
 args = Dotdict({
-        'N': 12,  # length of input image to DNN, i.e., N_prime in the paper
-        'K': 5,  # width of input image to DNN, i.e., K_prime in the paper
+        'N': 0,  # length of input image to DNN, i.e., N_prime in the paper
+        'K': 0,  # width of input image to DNN, i.e., K_prime in the paper
+        'cb_N': 10,
+        'cb_M': 4,
         'lpos': 5,  # number of positions filled in each time step
         'M': 3,  # feature planes
         'Q': 2,  # 2 for binary sequence
@@ -25,15 +28,17 @@ args = Dotdict({
         'numfilters2': 512,
         'l2_const': 1e-3,
         'batchSize': 64,
-        'numEpisode': 100001,
+        'numEpisode': 10001,
         'isMultiCore': 1,
         'recordState': 0,
         })
 
-overallSteps = args.N * args.K
+overallSteps = args.cb_N * args.cb_M
 stepSize = args.lpos
-n_steps = int(overallSteps/stepSize)
+n_steps = overallSteps // stepSize
 memorySize = n_steps * args.updateNNcycle * args.zDNN
+args.N = math.ceil(args.cb_N * args.cb_M / args.lpos)
+args.K = args.lpos
 
 ######## Complementary Code J = 2, M = 2, N = 8
 # if np.mod(args.N, 2) == 1:
@@ -52,14 +57,21 @@ memorySize = n_steps * args.updateNNcycle * args.zDNN
 
 
 ###### binary codebook
-worstMetric = args.K
-bestMetric = 0
+# worstMetric = args.K
+# bestMetric = 0
 
-
+worstMetric = args.M
+bestMetric = math.sqrt((args.cb_N - args.cb_M) / ((args.cb_N - 1) * args.cb_M))
 ###### reward definition - codebook
 def calc_reward(currentState):
-
-    return 0, 0
+    inner_product = np.array([])
+    state = currentState.reshape([args.cb_M, args.cb_N]).T
+    for i in range(1, args.cb_N):
+        for j in range(0, i):
+             inner_product = np.append(inner_product, np.dot(state[i], state[j]))
+    incoherence = np.max(inner_product)
+    reward = (worstMetric + bestMetric - incoherence) / (worstMetric - bestMetric)
+    return reward, incoherence
 
 # ######## reward definition - complementary code
 # def calc_reward(currentState):
@@ -176,14 +188,15 @@ def evaluate_DNN(n_games, tau, evaluating_fn):
         currentMove, _ = MCTS_main(args, VisitedState, stepSize, n_steps, DNN.evaluate_node, calc_reward, selfPlay = 0)
 
         # sequence found
-        reward, corr = calc_reward(currentMove.reshape([1,len(currentMove)]))
+        reward, corr = calc_reward(currentMove.reshape([1, len(currentMove)]))
 
         # record every reward
         corrArray.append(corr)
-
+    mean = np.mean(corrArray)
     print("MCTS + DNN play = ", corrArray)
-    print("mean = ", np.mean(corrArray))
-    return np.mean(corrArray), np.max(corrArray)
+    print("mean = ", mean)
+    return mean
+
 
 ######## Update DNN
 def updateDNN(memoryBuffer, lr):
@@ -209,7 +222,7 @@ def main():
 
     # load/save latest structure
     # DNN.loadParams('./bestParams/net_params.ckpt')
-    # DNN.saveParams('./bestParams/net_params.ckpt')
+    DNN.saveParams('./bestParams/net_params.ckpt')
 
     # performance of current DNN
     DNNplayer, DNNmin = DNN_play(n_games=100, evaluating_fn=DNN.evaluate_node)
@@ -218,19 +231,19 @@ def main():
     if args.recordState == 1:
         f = open('Record.txt', 'w')
         f.write(str(0)+" "+str(DNNplayer)+" "+str(meanCorr)+" "+str(DNNmin)+" "+str(0) + " " + str(0) + " ")
-        f.write(str(0)+" ") # overall visited states
-        f.write(str(0)+" ") # visited states in the last G episodes
-        f.write(str(0)+" ") # mean entropy in the last G episodes
-        f.write(str(0)+" ") # cross entropy in the last G episodes
-        f.write(str(0)+";\n") # number of states being evaluated in the latest G episodes
+        f.write(str(0)+" ")  # overall visited states
+        f.write(str(0)+" ")  # visited states in the last G episodes
+        f.write(str(0)+" ")  # mean entropy in the last G episodes
+        f.write(str(0)+" ")  # cross entropy in the last G episodes
+        f.write(str(0)+";\n")  # number of states being evaluated in the latest G episodes
         f.close()
 
     global worstMetric
     worstMetric = meanCorr
 
     print("-------------------------------------")
-    print("worstMetric = %s"%(worstMetric))
-    print("bestMetric = %s"%(bestMetric))
+    print("worstMetric = ", worstMetric, '\n')
+    print("bestMetric = ", bestMetric, '\n')
 
     overall_startTime = time.time()
 
@@ -308,7 +321,7 @@ def main():
 
     print("-------------------------------------")
     print("-------------------------------------")
-    print("After evaluation, the mean reward we get is %s"%(meanCorr))
+    print("After evaluation, the mean reward we get is ", meanCorr, '\n')
 
     # seconds consumed from beginning
     print(time.time()-overall_startTime)
