@@ -28,9 +28,9 @@ args = Dotdict({
         'numfilters2': 512,
         'l2_const': 1e-3,
         'batchSize': 64,
-        'numEpisode': 10001,
+        'numEpisode': 50,
         'isMultiCore': 1,
-        'recordState': 0,
+        'recordState': 1,
         })
 
 overallSteps = args.cb_N * args.cb_M
@@ -61,7 +61,7 @@ args.K = args.lpos
 # bestMetric = 0
 
 worstMetric = args.M
-bestMetric = math.sqrt((args.cb_N - args.cb_M) / ((args.cb_N - 1) * args.cb_M))
+bestMetric = math.ceil(math.sqrt((args.cb_N - args.cb_M) / ((args.cb_N - 1) * args.cb_M)))
 ###### reward definition - codebook
 def calc_reward(currentState):
     inner_product = np.array([])
@@ -70,7 +70,10 @@ def calc_reward(currentState):
         for j in range(0, i):
              inner_product = np.append(inner_product, np.dot(state[i], state[j]))
     incoherence = np.max(inner_product)
-    reward = (worstMetric + bestMetric - incoherence) / (worstMetric - bestMetric)
+    if incoherence > worstMetric:
+        reward = -1
+    else:
+        reward = (worstMetric + bestMetric - incoherence) / (worstMetric - bestMetric)
     return reward, incoherence
 
 # ######## reward definition - complementary code
@@ -221,8 +224,8 @@ def main():
     memoryBuffer = deque(maxlen=memorySize)
 
     # load/save latest structure
-    # DNN.loadParams('./bestParams/net_params.ckpt')
-    DNN.saveParams('./bestParams/net_params.ckpt')
+    DNN.loadParams('./bestParams/net_params.ckpt')
+    # DNN.saveParams('./bestParams/net_params.ckpt')
 
     # performance of current DNN
     DNNplayer, DNNmin = DNN_play(n_games=100, evaluating_fn=DNN.evaluate_node)
